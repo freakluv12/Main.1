@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}Аренда - Управление Автобизнесом{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-6 mb-4">
+            <i class="fas fa-calendar-alt me-2"></i>
+            Управление арендой
+        </h1>
+    </div>
+</div>
+
+<!-- Добавление клиента -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-user-plus me-2"></i>
+            Добавить клиента
+        </h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('add_client') }}">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="client_name" class="form-label">Имя клиента *</label>
+                    <input type="text" class="form-control" id="client_name" name="name" required>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="client_phone" class="form-label">Телефон</label>
+                    <input type="tel" class="form-control" id="client_phone" name="phone">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="client_email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="client_email" name="email">
+                </div>
+                <div class="col-md-2 mb-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-user-plus me-1"></i>
+                        Добавить
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Создание контракта аренды -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-file-contract me-2"></i>
+            Создать контракт аренды
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if clients and cars %}
+            <form method="POST" action="{{ url_for('add_rental') }}" id="rentalForm">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label for="rental_client_id" class="form-label">Клиент *</label>
+                        <select class="form-select" id="rental_client_id" name="client_id" required>
+                            <option value="">Выберите клиента</option>
+                            {% for client in clients %}
+                                <option value="{{ client.id }}">{{ client.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="rental_car_id" class="form-label">Автомобиль *</label>
+                        <select class="form-select" id="rental_car_id" name="car_id" required onchange="checkAvailability()">
+                            <option value="">Выберите автомобиль</option>
+                            {% for car in cars %}
+                                <option value="{{ car.id }}">{{ car.brand }} {{ car.model }} ({{ car.year }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label for="start_date" class="form-label">Дата начала *</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date" required onchange="checkAvailability()">
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label for="end_date" class="form-label">Дата окончания *</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date" required onchange="checkAvailability(); calculateTotal()">
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label for="daily_rate" class="form-label">Стоимость/день *</label>
+                        <input type="number" class="form-control" id="daily_rate" name="daily_rate" step="0.01" min="0" required onchange="calculateTotal()">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="alert alert-info" id="availabilityCheck" style="display: none;">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <span id="availabilityMessage"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Общая стоимость</label>
+                        <div class="form-control-plaintext">
+                            <strong id="totalAmount">0 ₽</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-2 mb-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100" id="submitRental" disabled>
+                            <i class="fas fa-plus me-1"></i>
+                            Создать
+                        </button>
+                    </div>
+                </div>
+            </form>
+        {% else %}
+            <div class="alert alert-warning">
+                {% if not clients %}Для создания аренды сначала добавьте клиентов. {% endif %}
+                {% if not cars %}Нет доступных автомобилей для аренды.{% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Список активных аренд -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-list me-2"></i>
+            Активные аренды
+        </h5>
+    </div>
+    <div class="card-body">
+        {% set active_rentals = rentals | selectattr("status", "equalto", "active") | list %}
+        {% if active_rentals %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Клиент</th>
+                            <th>Автомобиль</th>
+                            <th>Период</th>
+                            <th>Стоимость</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rental in active_rentals %}
+                        <tr>
+                            <td>{{ rental.id }}</td>
+                            <td>
+                                <strong>{{ rental.client.name }}</strong>
+                                {% if rental.client.phone %}
+                                    <br><small class="text-muted">{{ rental.client.phone }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ rental.car.brand }} {{ rental.car.model }}</strong>
+                                <br><small class="text-muted">({{ rental.car.year }})</small>
+                            </td>
+                            <td>
+                                {{ rental.start_date.strftime('%d.%m.%Y') }} - {{ rental.end_date.strftime('%d.%m.%Y') }}
+                                <br><small class="text-muted">{{ (rental.end_date - rental.start_date).days + 1 }} дней</small>
+                            </td>
+                            <td>
+                                <strong>{{ "%.0f"|format(rental.total_amount) }} ₽</strong>
+                                <br><small class="text-muted">{{ "%.0f"|format(rental.daily_rate) }} ₽/день</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-success">Активная</span>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('complete_rental', rental_id=rental.id) }}" 
+                                   class="btn btn-sm btn-outline-primary"
+                                   onclick="return confirm('Завершить аренду?')">
+                                    <i class="fas fa-check me-1"></i>
+                                    Завершить
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-4 text-muted">
+                <i class="fas fa-calendar-times fa-3x mb-3"></i>
+                <p>Активных аренд нет</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Добавление платежа -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-money-bill-wave me-2"></i>
+            Добавить платеж
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if active_rentals %}
+            <form method="POST" action="{{ url_for('add_payment') }}">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="payment_rental_id" class="form-label">Аренда *</label>
+                        <select class="form-select" id="payment_rental_id" name="rental_id" required>
+                            <option value="">Выберите аренду</option>
+                            {% for rental in active_rentals %}
+                                <option value="{{ rental.id }}">
+                                    {{ rental.client.name }} - {{ rental.car.brand }} {{ rental.car.model }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label for="payment_amount" class="form-label">Сумма *</label>
+                        <input type="number" class="form-control" id="payment_amount" name="amount" step="0.01" min="0" required>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label for="payment_date" class="form-label">Дата платежа *</label>
+                        <input type="date" class="form-control" id="payment_date" name="payment_date" required>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label for="payment_description" class="form-label">Описание</label>
+                        <input type="text" class="form-control" id="payment_description" name="description">
+                    </div>
+                    <div class="col-md-2 mb-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-plus me-1"></i>
+                            Добавить
+                        </button>
+                    </div>
+                </div>
+            </form>
+        {% else %}
+            <div class="alert alert-warning">
+                Нет активных аренд для добавления платежей
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- История всех аренд -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-history me-2"></i>
+            История аренд
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if rentals %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Клиент</th>
+                            <th>Автомобиль</th>
+                            <th>Период</th>
+                            <th>Стоимость</th>
+                            <th>Статус</th>
+                            <th>Платежи</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rental in rentals %}
+                        <tr>
+                            <td>{{ rental.id }}</td>
+                            <td>
+                                <strong>{{ rental.client.name }}</strong>
+                                {% if rental.client.phone %}
+                                    <br><small class="text-muted">{{ rental.client.phone }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ rental.car.brand }} {{ rental.car.model }}</strong>
+                                <br><small class="text-muted">({{ rental.car.year }})</small>
+                            </td>
+                            <td>
+                                {{ rental.start_date.strftime('%d.%m.%Y') }} - {{ rental.end_date.strftime('%d.%m.%Y') }}
+                            </td>
+                            <td><strong>{{ "%.0f"|format(rental.total_amount) }} ₽</strong></td>
+                            <td>
+                                {% if rental.status == 'active' %}
+                                    <span class="badge bg-success">Активная</span>
+                                {% elif rental.status == 'completed' %}
+                                    <span class="badge bg-primary">Завершена</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ rental.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% set total_paid = rental.payments | sum(attribute='amount') %}
+                                {% if total_paid > 0 %}
+                                    <strong>{{ "%.0f"|format(total_paid) }} ₽</strong>
+                                    {% if total_paid < rental.total_amount %}
+                                        <br><small class="text-warning">Долг: {{ "%.0f"|format(rental.total_amount - total_paid) }} ₽</small>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">Не оплачено</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-4 text-muted">
+                <i class="fas fa-file-contract fa-3x mb-3"></i>
+                <p>История аренд пуста</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Автоматическая установка даты
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('payment_date').value = today;
+    document.getElementById('start_date').value = today;
+    
+    // Устанавливаем дату окончания на завтра
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('end_date').value = tomorrow.toISOString().split('T')[0];
+});
+
+// Проверка доступности автомобиля
+function checkAvailability() {
+    const carId = document.getElementById('rental_car_id').value;
+    const startDate = document.getElementById('start_date').value;
+    const endDate = document.getElementById('end_date').value;
+    
+    if (!carId || !startDate || !endDate) {
+        document.getElementById('availabilityCheck').style.display = 'none';
+        document.getElementById('submitRental').disabled = true;
+        return;
+    }
+    
+    fetch(`/api/car_availability/${carId}?start_date=${startDate}&end_date=${endDate}`)
+        .then(response => response.json())
+        .then(data => {
+            const checkDiv = document.getElementById('availabilityCheck');
+            const messageSpan = document.getElementById('availabilityMessage');
+            const submitBtn = document.getElementById('submitRental');
+            
+            checkDiv.style.display = 'block';
+            messageSpan.textContent = data.message;
+            
+            if (data.available) {
+                checkDiv.className = 'alert alert-success';
+                submitBtn.disabled = false;
+            } else {
+                checkDiv.className = 'alert alert-danger';
+                submitBtn.disabled = true;
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка:', error);
+            document.getElementById('submitRental').disabled = true;
+        });
+}
+
+// Расчет общей стоимости
+function calculateTotal() {
+    const startDate = document.getElementById('start_date').value;
+    const endDate = document.getElementById('end_date').value;
+    const dailyRate = document.getElementById('daily_rate').value;
+    
+    if (startDate && endDate && dailyRate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        const total = days * parseFloat(dailyRate);
+        
+        document.getElementById('totalAmount').textContent = `${total.toFixed(0)} ₽ (${days} дней)`;
+    }
+}
+</script>
+{% endblock %}

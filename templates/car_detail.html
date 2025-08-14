@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block title %}{{ car.brand }} {{ car.model }} - Управление Автобизнесом{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Главная</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('garage') }}">Гараж</a></li>
+                <li class="breadcrumb-item active">{{ car.brand }} {{ car.model }}</li>
+            </ol>
+        </nav>
+        <h1 class="display-6 mb-4">
+            <i class="fas fa-car me-2"></i>
+            {{ car.brand }} {{ car.model }} ({{ car.year }})
+        </h1>
+    </div>
+</div>
+
+<!-- Информация об автомобиле -->
+<div class="row mb-4">
+    <div class="col-lg-8 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Информация об автомобиле
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong>Марка:</strong> {{ car.brand }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Модель:</strong> {{ car.model }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Год выпуска:</strong> {{ car.year }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>VIN номер:</strong> 
+                        {% if car.vin %}
+                            <code>{{ car.vin }}</code>
+                        {% else %}
+                            <span class="text-muted">Не указан</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Стоимость покупки:</strong> 
+                        <span class="text-primary">{{ "%.0f"|format(car.purchase_price) }} ₽</span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Статус:</strong>
+                        {% if car.status == 'active' %}
+                            <span class="badge bg-success">Активный</span>
+                        {% elif car.status == 'rented' %}
+                            <span class="badge bg-warning">В аренде</span>
+                        {% elif car.status == 'disassembled' %}
+                            <span class="badge bg-secondary">Разобран</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ car.status }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if car.description %}
+                    <div class="row">
+                        <div class="col-12">
+                            <strong>Описание:</strong>
+                            <p class="mt-2">{{ car.description }}</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-calculator me-2"></i>
+                    Финансовые показатели
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <small class="text-muted">Общие вложения</small>
+                    <h4 class="text-danger">{{ "%.0f"|format(total_expenses) }} ₽</h4>
+                </div>
+                <div class="mb-3">
+                    <small class="text-muted">Общие доходы</small>
+                    <h4 class="text-success">{{ "%.0f"|format(total_income) }} ₽</h4>
+                </div>
+                <hr>
+                <div class="mb-0">
+                    <small class="text-muted">Чистая прибыль</small>
+                    <h4 class="{% if total_income - total_expenses >= 0 %}text-success{% else %}text-danger{% endif %}">
+                        {{ "%.0f"|format(total_income - total_expenses) }} ₽
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Добавление расхода -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-receipt me-2"></i>
+            Добавить расход
+        </h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('add_expense') }}">
+            <input type="hidden" name="car_id" value="{{ car.id }}">
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label for="expense_date" class="form-label">Дата *</label>
+                    <input type="date" class="form-control" id="expense_date" name="date" required>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="expense_amount" class="form-label">Сумма *</label>
+                    <input type="number" class="form-control" id="expense_amount" name="amount" step="0.01" min="0" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="expense_category" class="form-label">Категория *</label>
+                    <select class="form-select" id="expense_category" name="category" required>
+                        <option value="">Выберите категорию</option>
+                        <option value="топливо">Топливо</option>
+                        <option value="ремонт">Ремонт</option>
+                        <option value="запчасти">Запчасти</option>
+                        <option value="обслуживание">Обслуживание</option>
+                    </select>
+                </div>
+                <div class="col-md-2 mb-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-plus me-1"></i>
+                        Добавить
+                    </button>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-10 mb-3">
+                    <label for="expense_description" class="form-label">Описание</label>
+                    <input type="text" class="form-control" id="expense_description" name="description">
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- История расходов -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-history me-2"></i>
+            История расходов
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if expenses %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Категория</th>
+                            <th>Сумма</th>
+                            <th>Описание</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for expense in expenses %}
+                        <tr>
+                            <td>{{ expense.date.strftime('%d.%m.%Y') }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if expense.category == 'топливо' %}bg-primary
+                                    {% elif expense.category == 'ремонт' %}bg-danger
+                                    {% elif expense.category == 'запчасти' %}bg-warning
+                                    {% else %}bg-info{% endif %}">
+                                    {{ expense.category.title() }}
+                                </span>
+                            </td>
+                            <td><strong>{{ "%.2f"|format(expense.amount) }} ₽</strong></td>
+                            <td>{{ expense.description or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-4 text-muted">
+                <i class="fas fa-receipt fa-3x mb-3"></i>
+                <p>История расходов пуста</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- История аренд -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-calendar-alt me-2"></i>
+            История аренд
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if rentals %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Клиент</th>
+                            <th>Период</th>
+                            <th>Стоимость</th>
+                            <th>Статус</th>
+                            <th>Оплачено</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rental in rentals %}
+                        <tr>
+                            <td>
+                                <strong>{{ rental.client.name }}</strong>
+                                {% if rental.client.phone %}
+                                    <br><small class="text-muted">{{ rental.client.phone }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ rental.start_date.strftime('%d.%m.%Y') }} - {{ rental.end_date.strftime('%d.%m.%Y') }}
+                                <br><small class="text-muted">{{ (rental.end_date - rental.start_date).days + 1 }} дней</small>
+                            </td>
+                            <td><strong>{{ "%.0f"|format(rental.total_amount) }} ₽</strong></td>
+                            <td>
+                                {% if rental.status == 'active' %}
+                                    <span class="badge bg-success">Активная</span>
+                                {% elif rental.status == 'completed' %}
+                                    <span class="badge bg-primary">Завершена</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ rental.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% set total_paid = rental.payments | sum(attribute='amount') %}
+                                {% if total_paid > 0 %}
+                                    <strong>{{ "%.0f"|format(total_paid) }} ₽</strong>
+                                    {% if total_paid < rental.total_amount %}
+                                        <br><small class="text-warning">Долг: {{ "%.0f"|format(rental.total_amount - total_paid) }} ₽</small>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">Не оплачено</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-4 text-muted">
+                <i class="fas fa-calendar-times fa-3x mb-3"></i>
+                <p>История аренд пуста</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Автоматическая установка текущей даты для расходов
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.getElementById('expense_date');
+    if (dateInput && !dateInput.value) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.value = today;
+    }
+});
+</script>
+{% endblock %}

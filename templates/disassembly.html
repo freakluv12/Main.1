@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}Разборка - Управление Автобизнесом{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-6 mb-4">
+            <i class="fas fa-wrench me-2"></i>
+            Разборка автомобилей
+        </h1>
+    </div>
+</div>
+
+<!-- Добавление записи о разборке -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-plus me-2"></i>
+            Зарегистрировать автомобиль на разборку
+        </h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('add_disassembly_record') }}">
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label for="car_brand" class="form-label">Марка *</label>
+                    <input type="text" class="form-control" id="car_brand" name="car_brand" required>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="car_model" class="form-label">Модель *</label>
+                    <input type="text" class="form-control" id="car_model" name="car_model" required>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label for="car_year" class="form-label">Год *</label>
+                    <input type="number" class="form-control" id="car_year" name="car_year" min="1900" max="2030" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="vin" class="form-label">VIN номер</label>
+                    <input type="text" class="form-control" id="vin" name="vin" maxlength="17">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label for="disassembly_date" class="form-label">Дата разборки *</label>
+                    <input type="date" class="form-control" id="disassembly_date" name="disassembly_date" required>
+                </div>
+                <div class="col-md-7 mb-3">
+                    <label for="description" class="form-label">Описание состояния автомобиля</label>
+                    <textarea class="form-control" id="description" name="description" rows="3" placeholder="Укажите состояние кузова, двигателя, салона и других частей..."></textarea>
+                </div>
+                <div class="col-md-2 mb-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-plus me-1"></i>
+                        Зарегистрировать
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Список записей разборки -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-list me-2"></i>
+            Записи о разборке
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if records %}
+            <div class="row">
+                {% for record in records %}
+                <div class="col-lg-6 mb-4">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">
+                                <strong>{{ record.car_brand }} {{ record.car_model }} ({{ record.car_year }})</strong>
+                            </h6>
+                            <small class="text-muted">{{ record.disassembly_date.strftime('%d.%m.%Y') }}</small>
+                        </div>
+                        <div class="card-body">
+                            {% if record.vin %}
+                                <p class="mb-2"><strong>VIN:</strong> <code>{{ record.vin }}</code></p>
+                            {% endif %}
+                            {% if record.description %}
+                                <p class="mb-3"><strong>Состояние:</strong> {{ record.description }}</p>
+                            {% endif %}
+                            
+                            <!-- Список извлеченных запчастей -->
+                            {% if record.extracted_parts %}
+                                <h6 class="text-success mb-2">
+                                    <i class="fas fa-cogs me-1"></i>
+                                    Извлеченные запчасти ({{ record.extracted_parts | length }})
+                                </h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Название</th>
+                                                <th>Количество</th>
+                                                <th>Цена</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for part in record.extracted_parts %}
+                                            <tr>
+                                                <td>{{ part.name }}</td>
+                                                <td>{{ part.quantity }}</td>
+                                                <td>{{ "%.0f"|format(part.price) }} ₽</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <p class="text-muted mb-3">Запчасти еще не добавлены</p>
+                            {% endif %}
+                            
+                            <!-- Форма добавления запчасти -->
+                            <div class="border-top pt-3">
+                                <h6 class="mb-2">Добавить запчасть</h6>
+                                <form method="POST" action="{{ url_for('add_part_from_disassembly') }}">
+                                    <input type="hidden" name="disassembly_record_id" value="{{ record.id }}">
+                                    <div class="row">
+                                        <div class="col-4 mb-2">
+                                            <input type="text" class="form-control form-control-sm" name="name" placeholder="Название" required>
+                                        </div>
+                                        <div class="col-2 mb-2">
+                                            <input type="number" class="form-control form-control-sm" name="quantity" placeholder="Кол-во" min="1" required>
+                                        </div>
+                                        <div class="col-3 mb-2">
+                                            <input type="number" class="form-control form-control-sm" name="price" placeholder="Цена" step="0.01" min="0" required>
+                                        </div>
+                                        <div class="col-3 mb-2">
+                                            <button type="submit" class="btn btn-success btn-sm w-100">
+                                                <i class="fas fa-plus me-1"></i>
+                                                Добавить
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-6 mb-2">
+                                            <input type="text" class="form-control form-control-sm" name="code" placeholder="Код запчасти">
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <input type="text" class="form-control form-control-sm" name="location" placeholder="Местоположение">
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-12 mb-2">
+                                            <textarea class="form-control form-control-sm" name="description" rows="2" placeholder="Описание запчасти"></textarea>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-4 text-muted">
+                <i class="fas fa-wrench fa-3x mb-3"></i>
+                <p>Записи о разборке не найдены</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Добавление поставщика (для справочника) -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-truck me-2"></i>
+            Добавить поставщика
+        </h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('add_supplier') }}">
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label for="supplier_name" class="form-label">Название поставщика *</label>
+                    <input type="text" class="form-control" id="supplier_name" name="name" required>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label for="contact_person" class="form-label">Контактное лицо</label>
+                    <input type="text" class="form-control" id="contact_person" name="contact_person">
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label for="supplier_phone" class="form-label">Телефон</label>
+                    <input type="tel" class="form-control" id="supplier_phone" name="phone">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="supplier_email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="supplier_email" name="email">
+                </div>
+                <div class="col-md-2 mb-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-plus me-1"></i>
+                        Добавить
+                    </button>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-10 mb-3">
+                    <label for="supplier_address" class="form-label">Адрес</label>
+                    <textarea class="form-control" id="supplier_address" name="address" rows="2"></textarea>
+                </div>
+            </div>
+        </form>
+        
+        {% if suppliers %}
+            <div class="mt-4">
+                <h6>Список поставщиков:</h6>
+                <div class="row">
+                    {% for supplier in suppliers %}
+                    <div class="col-md-6 mb-2">
+                        <div class="card card-body py-2">
+                            <strong>{{ supplier.name }}</strong>
+                            {% if supplier.contact_person %}
+                                <small class="text-muted">{{ supplier.contact_person }}</small>
+                            {% endif %}
+                            {% if supplier.phone %}
+                                <small class="text-muted">{{ supplier.phone }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Автоматическая установка текущей даты для разборки
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.getElementById('disassembly_date');
+    if (dateInput && !dateInput.value) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.value = today;
+    }
+});
+</script>
+{% endblock %}

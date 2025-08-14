@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block title %}Запчасти - Управление Автобизнесом{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-6 mb-4">
+            <i class="fas fa-cogs me-2"></i>
+            Учет запчастей
+        </h1>
+    </div>
+</div>
+
+<!-- Добавление запчасти -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-plus me-2"></i>
+            Добавить запчасть
+        </h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('add_part') }}">
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label for="part_name" class="form-label">Наименование *</label>
+                    <input type="text" class="form-control" id="part_name" name="name" required>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label for="part_code" class="form-label">Код запчасти</label>
+                    <input type="text" class="form-control" id="part_code" name="code">
+                </div>
+                <div class="col-md-1 mb-3">
+                    <label for="part_quantity" class="form-label">Количество *</label>
+                    <input type="number" class="form-control" id="part_quantity" name="quantity" min="0" required>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label for="part_price" class="form-label">Цена *</label>
+                    <input type="number" class="form-control" id="part_price" name="price" step="0.01" min="0" required>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label for="part_supplier_id" class="form-label">Поставщик</label>
+                    <select class="form-select" id="part_supplier_id" name="supplier_id">
+                        <option value="">Не выбран</option>
+                        {% for supplier in suppliers %}
+                            <option value="{{ supplier.id }}">{{ supplier.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 mb-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-plus me-1"></i>
+                        Добавить
+                    </button>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="part_location" class="form-label">Местоположение на складе</label>
+                    <input type="text" class="form-control" id="part_location" name="location" placeholder="Стеллаж А-1, полка 3">
+                </div>
+                <div class="col-md-8 mb-3">
+                    <label for="part_description" class="form-label">Описание</label>
+                    <textarea class="form-control" id="part_description" name="description" rows="2" placeholder="Дополнительное описание запчасти"></textarea>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Фильтры поиска -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-search me-2"></i>
+            Поиск и фильтры
+        </h5>
+    </div>
+    <div class="card-body">
+        <form method="GET">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="search" class="form-label">Поиск по названию, коду или описанию</label>
+                    <input type="text" class="form-control" id="search" name="search" 
+                           value="{{ request.args.get('search', '') }}" 
+                           placeholder="Введите текст для поиска">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="supplier_id" class="form-label">Поставщик</label>
+                    <select class="form-select" id="supplier_id" name="supplier_id">
+                        <option value="">Все поставщики</option>
+                        {% for supplier in suppliers %}
+                            <option value="{{ supplier.id }}" 
+                                    {% if request.args.get('supplier_id') == supplier.id|string %}selected{% endif %}>
+                                {{ supplier.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 mb-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        <i class="fas fa-search me-1"></i>
+                        Найти
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Список запчастей -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="fas fa-warehouse me-2"></i>
+            Склад запчастей
+        </h5>
+        <span class="badge bg-primary">Всего позиций: {{ parts | length }}</span>
+    </div>
+    <div class="card-body">
+        {% if parts %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Наименование</th>
+                            <th>Код</th>
+                            <th>Количество</th>
+                            <th>Цена</th>
+                            <th>Сумма</th>
+                            <th>Поставщик</th>
+                            <th>Местоположение</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for part in parts %}
+                        <tr {% if part.quantity == 0 %}class="table-danger"{% elif part.quantity < 5 %}class="table-warning"{% endif %}>
+                            <td>
+                                <strong>{{ part.name }}</strong>
+                                {% if part.description %}
+                                    <br><small class="text-muted">{{ part.description }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if part.code %}
+                                    <code>{{ part.code }}</code>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ part.quantity }}</strong>
+                                {% if part.quantity == 0 %}
+                                    <br><small class="text-danger">Нет в наличии</small>
+                                {% elif part.quantity < 5 %}
+                                    <br><small class="text-warning">Мало товара</small>
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ "%.2f"|format(part.price) }} ₽</strong></td>
+                            <td><strong>{{ "%.2f"|format(part.price * part.quantity) }} ₽</strong></td>
+                            <td>
+                                {% if part.supplier %}
+                                    {{ part.supplier.name }}
+                                {% elif part.disassembly_record %}
+                                    <span class="text-info">
+                                        <i class="fas fa-wrench me-1"></i>
+                                        Разборка
+                                    </span>
+                                    <br><small class="text-muted">{{ part.disassembly_record.car_brand }} {{ part.disassembly_record.car_model }}</small>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ part.location or '-' }}</td>
+                            <td>
+                                {% if part.quantity > 0 %}
+                                    <button class="btn btn-sm btn-success" data-bs-toggle="modal" 
+                                            data-bs-target="#sellModal" onclick="prepareSale({{ part.id }}, '{{ part.name }}', {{ part.quantity }}, {{ part.price }})">
+                                        <i class="fas fa-shopping-cart me-1"></i>
+                                        Продать
+                                    </button>
+                                {% else %}
+                                    <button class="btn btn-sm btn-secondary" disabled>
+                                        <i class="fas fa-ban me-1"></i>
+                                        Нет в наличии
+                                    </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-4 text-muted">
+                <i class="fas fa-cogs fa-3x mb-3"></i>
+                <p>Запчасти не найдены</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Статистика склада -->
+<div class="row">
+    <div class="col-md-3 mb-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-boxes fa-2x text-primary mb-3"></i>
+                <h5 class="card-title">Общее количество</h5>
+                <h2 class="text-primary">{{ parts | sum(attribute='quantity') }}</h2>
+                <p class="card-text text-muted">Единиц запчастей</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-ruble-sign fa-2x text-success mb-3"></i>
+                <h5 class="card-title">Стоимость склада</h5>
+                {% set total_value = 0 %}
+                {% for part in parts %}
+                    {% set total_value = total_value + (part.price * part.quantity) %}
+                {% endfor %}
+                <h2 class="text-success">{{ "%.0f"|format(total_value) }} ₽</h2>
+                <p class="card-text text-muted">Общая стоимость</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-exclamation-triangle fa-2x text-warning mb-3"></i>
+                <h5 class="card-title">Мало товара</h5>
+                <h2 class="text-warning">{{ parts | selectattr('quantity', 'lt', 5) | selectattr('quantity', 'gt', 0) | list | length }}</h2>
+                <p class="card-text text-muted">Позиций < 5 шт.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-ban fa-2x text-danger mb-3"></i>
+                <h5 class="card-title">Нет в наличии</h5>
+                <h2 class="text-danger">{{ parts | selectattr('quantity', 'equalto', 0) | list | length }}</h2>
+                <p class="card-text text-muted">Позиций без товара</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для продажи -->
+<div class="modal fade" id="sellModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-shopping-cart me-2"></i>
+                    Продажа запчасти
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('sell_part') }}">
+                <div class="modal-body">
+                    <input type="hidden" id="sale_part_id" name="part_id">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Запчасть</label>
+                        <div class="form-control-plaintext" id="sale_part_name"></div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label for="sale_quantity_sold" class="form-label">Количество для продажи *</label>
+                            <input type="number" class="form-control" id="sale_quantity_sold" name="quantity_sold" min="1" required>
+                            <div class="form-text">Доступно: <span id="available_quantity"></span> шт.</div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label for="sale_price" class="form-label">Цена продажи *</label>
+                            <input type="number" class="form-control" id="sale_price" name="sale_price" step="0.01" min="0" required>
+                            <div class="form-text">Себестоимость: <span id="cost_price"></span> ₽</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="sale_date" class="form-label">Дата продажи *</label>
+                        <input type="date" class="form-control" id="sale_date" name="sale_date" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="customer_name" class="form-label">Имя покупателя</label>
+                        <input type="text" class="form-control" id="customer_name" name="customer_name">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="sale_description" class="form-label">Описание продажи</label>
+                        <textarea class="form-control" id="sale_description" name="description" rows="2"></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <strong>Сумма к получению:</strong> <span id="total_sale_amount">0 ₽</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-shopping-cart me-1"></i>
+                        Оформить продажу
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Установка текущей даты для продажи
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('sale_date').value = today;
+    
+    // Обработчики для расчета суммы продажи
+    document.getElementById('sale_quantity_sold').addEventListener('input', calculateSaleAmount);
+    document.getElementById('sale_price').addEventListener('input', calculateSaleAmount);
+});
+
+// Подготовка модального окна продажи
+function prepareSale(partId, partName, quantity, price) {
+    document.getElementById('sale_part_id').value = partId;
+    document.getElementById('sale_part_name').textContent = partName;
+    document.getElementById('available_quantity').textContent = quantity;
+    document.getElementById('cost_price').textContent = price.toFixed(2);
+    document.getElementById('sale_price').value = price;
+    document.getElementById('sale_quantity_sold').max = quantity;
+    document.getElementById('sale_quantity_sold').value = 1;
+    calculateSaleAmount();
+}
+
+// Расчет суммы продажи
+function calculateSaleAmount() {
+    const quantity = parseInt(document.getElementById('sale_quantity_sold').value) || 0;
+    const price = parseFloat(document.getElementById('sale_price').value) || 0;
+    const total = quantity * price;
+    document.getElementById('total_sale_amount').textContent = total.toFixed(2) + ' ₽';
+}
+</script>
+{% endblock %}

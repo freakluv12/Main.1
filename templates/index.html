@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Главная - Управление Автобизнесом{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-6 mb-4">
+            <i class="fas fa-tachometer-alt me-2"></i>
+            Панель управления
+        </h1>
+    </div>
+</div>
+
+<!-- Карточки с основной статистикой -->
+<div class="row mb-5">
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-car fa-2x text-primary mb-3"></i>
+                <h5 class="card-title">Автомобили</h5>
+                <h2 class="text-primary">{{ total_cars }}</h2>
+                <p class="card-text text-muted">Активных в гараже</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-calendar-check fa-2x text-warning mb-3"></i>
+                <h5 class="card-title">Аренды</h5>
+                <h2 class="text-warning">{{ active_rentals }}</h2>
+                <p class="card-text text-muted">Активных контрактов</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-cogs fa-2x text-info mb-3"></i>
+                <h5 class="card-title">Запчасти</h5>
+                <h2 class="text-info">{{ total_parts }}</h2>
+                <p class="card-text text-muted">Единиц на складе</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-chart-line fa-2x {% if monthly_profit >= 0 %}text-success{% else %}text-danger{% endif %} mb-3"></i>
+                <h5 class="card-title">Прибыль</h5>
+                <h2 class="{% if monthly_profit >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    {{ "%.0f"|format(monthly_profit) }} ₽
+                </h2>
+                <p class="card-text text-muted">За текущий месяц</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Сводка по доходам и расходам -->
+<div class="row mb-4">
+    <div class="col-lg-6 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-arrow-up me-2 text-success"></i>
+                    Доходы за месяц
+                </h5>
+            </div>
+            <div class="card-body">
+                <h3 class="text-success">{{ "%.0f"|format(monthly_income) }} ₽</h3>
+                <p class="text-muted mb-0">Общий доход от аренды и продажи запчастей</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-arrow-down me-2 text-danger"></i>
+                    Расходы за месяц
+                </h5>
+            </div>
+            <div class="card-body">
+                <h3 class="text-danger">{{ "%.0f"|format(monthly_expenses) }} ₽</h3>
+                <p class="text-muted mb-0">Общие расходы на обслуживание и ремонт</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Быстрые действия -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>
+                    Быстрые действия
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-2 mb-2">
+                        <a href="{{ url_for('garage') }}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-plus me-1"></i>
+                            Добавить авто
+                        </a>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <a href="{{ url_for('rent') }}" class="btn btn-outline-warning w-100">
+                            <i class="fas fa-calendar-plus me-1"></i>
+                            Новая аренда
+                        </a>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <a href="{{ url_for('disassembly') }}" class="btn btn-outline-info w-100">
+                            <i class="fas fa-wrench me-1"></i>
+                            На разборку
+                        </a>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <a href="{{ url_for('parts') }}" class="btn btn-outline-success w-100">
+                            <i class="fas fa-cog me-1"></i>
+                            Склад запчастей
+                        </a>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <a href="{{ url_for('analytics') }}" class="btn btn-outline-secondary w-100">
+                            <i class="fas fa-chart-bar me-1"></i>
+                            Отчеты
+                        </a>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <a href="{{ url_for('export_pdf') }}" class="btn btn-outline-dark w-100">
+                            <i class="fas fa-file-pdf me-1"></i>
+                            Экспорт PDF
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

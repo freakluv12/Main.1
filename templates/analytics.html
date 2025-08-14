@@ -1,0 +1,442 @@
+{% extends "base.html" %}
+
+{% block title %}Аналитика - Управление Автобизнесом{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-6 mb-4">
+            <i class="fas fa-chart-line me-2"></i>
+            Аналитика и отчеты
+        </h1>
+    </div>
+</div>
+
+<!-- Кнопка экспорта PDF -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-1">Экспорт отчетов</h5>
+                    <p class="text-muted mb-0">Создайте PDF отчет с текущей статистикой</p>
+                </div>
+                <a href="{{ url_for('export_pdf') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-file-pdf me-2"></i>
+                    Скачать PDF отчет
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- График доходов и расходов -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-area me-2"></i>
+                    Динамика доходов и расходов за 12 месяцев
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="incomeExpenseChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- График прибыльности -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>
+                    Прибыльность по месяцам
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="profitChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Диаграмма расходов по категориям -->
+<div class="row mb-4">
+    <div class="col-lg-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>
+                    Расходы по категориям
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if expense_categories %}
+                    <canvas id="expenseCategoryChart"></canvas>
+                {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-chart-pie fa-3x mb-3"></i>
+                        <p>Нет данных о расходах</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Таблица расходов по категориям -->
+    <div class="col-lg-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>
+                    Детализация расходов
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if expense_categories %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Категория</th>
+                                    <th>Сумма</th>
+                                    <th>%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set total_expenses = expense_categories | sum(attribute='1') %}
+                                {% for category, amount in expense_categories %}
+                                <tr>
+                                    <td>
+                                        <span class="badge 
+                                            {% if category == 'топливо' %}bg-primary
+                                            {% elif category == 'ремонт' %}bg-danger
+                                            {% elif category == 'запчасти' %}bg-warning
+                                            {% else %}bg-info{% endif %}">
+                                            {{ category.title() }}
+                                        </span>
+                                    </td>
+                                    <td><strong>{{ "%.0f"|format(amount) }} ₽</strong></td>
+                                    <td>{{ "%.1f"|format((amount / total_expenses * 100) if total_expenses > 0 else 0) }}%</td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="table-secondary">
+                                    <td><strong>Итого</strong></td>
+                                    <td><strong>{{ "%.0f"|format(total_expenses) }} ₽</strong></td>
+                                    <td><strong>100%</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-table fa-3x mb-3"></i>
+                        <p>Нет данных о расходах</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ключевые показатели -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-calculator me-2"></i>
+                    Ключевые показатели эффективности
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3 mb-3">
+                        <div class="p-3 border rounded">
+                            <i class="fas fa-arrow-up fa-2x text-success mb-2"></i>
+                            <h4 class="text-success mb-1">
+                                {% set total_income = 0 %}
+                                {% for income in income_data %}
+                                    {% set total_income = total_income + income %}
+                                {% endfor %}
+                                {{ "%.0f"|format(total_income) }} ₽
+                            </h4>
+                            <p class="text-muted mb-0">Общий доход за 12 месяцев</p>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <div class="p-3 border rounded">
+                            <i class="fas fa-arrow-down fa-2x text-danger mb-2"></i>
+                            <h4 class="text-danger mb-1">
+                                {% set total_expenses = 0 %}
+                                {% for expense in expense_data %}
+                                    {% set total_expenses = total_expenses + expense %}
+                                {% endfor %}
+                                {{ "%.0f"|format(total_expenses) }} ₽
+                            </h4>
+                            <p class="text-muted mb-0">Общие расходы за 12 месяцев</p>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <div class="p-3 border rounded">
+                            <i class="fas fa-chart-line fa-2x {% if total_income - total_expenses >= 0 %}text-success{% else %}text-danger{% endif %} mb-2"></i>
+                            <h4 class="{% if total_income - total_expenses >= 0 %}text-success{% else %}text-danger{% endif %} mb-1">
+                                {{ "%.0f"|format(total_income - total_expenses) }} ₽
+                            </h4>
+                            <p class="text-muted mb-0">Чистая прибыль за 12 месяцев</p>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <div class="p-3 border rounded">
+                            <i class="fas fa-percentage fa-2x text-info mb-2"></i>
+                            <h4 class="text-info mb-1">
+                                {% if total_income > 0 %}
+                                    {{ "%.1f"|format((total_income - total_expenses) / total_income * 100) }}%
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            </h4>
+                            <p class="text-muted mb-0">Рентабельность</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Прогноз и рекомендации -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    Анализ и рекомендации
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <h6 class="text-primary">
+                            <i class="fas fa-chart-line me-2"></i>
+                            Тенденции
+                        </h6>
+                        <ul class="list-unstyled">
+                            {% set avg_monthly_income = (total_income / 12) if total_income > 0 else 0 %}
+                            {% set avg_monthly_expenses = (total_expenses / 12) if total_expenses > 0 else 0 %}
+                            <li class="mb-2">
+                                <i class="fas fa-circle text-success me-2"></i>
+                                Средний месячный доход: <strong>{{ "%.0f"|format(avg_monthly_income) }} ₽</strong>
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-circle text-danger me-2"></i>
+                                Средний месячный расход: <strong>{{ "%.0f"|format(avg_monthly_expenses) }} ₽</strong>
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-circle text-info me-2"></i>
+                                Средняя месячная прибыль: <strong>{{ "%.0f"|format(avg_monthly_income - avg_monthly_expenses) }} ₽</strong>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <h6 class="text-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Рекомендации
+                        </h6>
+                        <ul class="list-unstyled">
+                            {% if total_expenses > 0 and expense_categories %}
+                                {% set max_category = expense_categories | max(attribute='1') %}
+                                <li class="mb-2">
+                                    <i class="fas fa-arrow-right text-warning me-2"></i>
+                                    Наибольшие расходы: <strong>{{ max_category[0].title() }}</strong>
+                                </li>
+                            {% endif %}
+                            {% if (total_income - total_expenses) / total_income * 100 < 20 and total_income > 0 %}
+                                <li class="mb-2">
+                                    <i class="fas fa-arrow-right text-warning me-2"></i>
+                                    Рентабельность ниже 20% - стоит оптимизировать расходы
+                                </li>
+                            {% endif %}
+                            {% if avg_monthly_income > 0 %}
+                                <li class="mb-2">
+                                    <i class="fas fa-arrow-right text-info me-2"></i>
+                                    Прогноз годового дохода: <strong>{{ "%.0f"|format(avg_monthly_income * 12) }} ₽</strong>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Данные для графиков переданные из Python
+const months = {{ months | safe }};
+const incomeData = {{ income_data | safe }};
+const expenseData = {{ expense_data | safe }};
+const profitData = {{ profit_data | safe }};
+
+// График доходов и расходов
+const incomeExpenseCtx = document.getElementById('incomeExpenseChart').getContext('2d');
+const incomeExpenseChart = new Chart(incomeExpenseCtx, {
+    type: 'line',
+    data: {
+        labels: months,
+        datasets: [{
+            label: 'Доходы',
+            data: incomeData,
+            borderColor: 'rgb(25, 135, 84)',
+            backgroundColor: 'rgba(25, 135, 84, 0.1)',
+            fill: true,
+            tension: 0.4
+        }, {
+            label: 'Расходы',
+            data: expenseData,
+            borderColor: 'rgb(220, 53, 69)',
+            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+            fill: true,
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            title: {
+                display: false
+            },
+            legend: {
+                position: 'top',
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return value.toLocaleString() + ' ₽';
+                    }
+                }
+            }
+        },
+        interaction: {
+            intersect: false,
+            mode: 'index'
+        }
+    }
+});
+
+// График прибыльности
+const profitCtx = document.getElementById('profitChart').getContext('2d');
+const profitChart = new Chart(profitCtx, {
+    type: 'bar',
+    data: {
+        labels: months,
+        datasets: [{
+            label: 'Прибыль',
+            data: profitData,
+            backgroundColor: function(context) {
+                const value = context.parsed.y;
+                return value >= 0 ? 'rgba(25, 135, 84, 0.7)' : 'rgba(220, 53, 69, 0.7)';
+            },
+            borderColor: function(context) {
+                const value = context.parsed.y;
+                return value >= 0 ? 'rgb(25, 135, 84)' : 'rgb(220, 53, 69)';
+            },
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            title: {
+                display: false
+            },
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return value.toLocaleString() + ' ₽';
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Круговая диаграмма расходов по категориям
+{% if expense_categories %}
+const expenseCategoryCtx = document.getElementById('expenseCategoryChart').getContext('2d');
+const categoryLabels = [{% for category, amount in expense_categories %}'{{ category.title() }}'{% if not loop.last %}, {% endif %}{% endfor %}];
+const categoryData = [{% for category, amount in expense_categories %}{{ amount }}{% if not loop.last %}, {% endif %}{% endfor %}];
+const categoryColors = [
+    'rgb(13, 110, 253)',  // primary - топливо
+    'rgb(220, 53, 69)',   // danger - ремонт  
+    'rgb(255, 193, 7)',   // warning - запчасти
+    'rgb(13, 202, 240)'   // info - обслуживание
+];
+
+const expenseCategoryChart = new Chart(expenseCategoryCtx, {
+    type: 'doughnut',
+    data: {
+        labels: categoryLabels,
+        datasets: [{
+            data: categoryData,
+            backgroundColor: categoryColors,
+            borderColor: categoryColors,
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    padding: 20
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const total = categoryData.reduce((a, b) => a + b, 0);
+                        const percentage = ((context.raw / total) * 100).toFixed(1);
+                        return context.label + ': ' + context.raw.toLocaleString() + ' ₽ (' + percentage + '%)';
+                    }
+                }
+            }
+        }
+    }
+});
+{% endif %}
+
+// Обновление графиков при изменении размера окна
+window.addEventListener('resize', function() {
+    incomeExpenseChart.resize();
+    profitChart.resize();
+    {% if expense_categories %}
+    expenseCategoryChart.resize();
+    {% endif %}
+});
+</script>
+{% endblock %}
